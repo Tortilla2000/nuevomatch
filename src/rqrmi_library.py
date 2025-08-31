@@ -705,7 +705,6 @@ class RQRMI:
             verbose: Verbosity
         """
 
-
         # See https://docs.python.org/3/library/struct.html#struct.pack
         # for struck pack format
 
@@ -714,21 +713,21 @@ class RQRMI:
 
         def read_uint8():
             idx['x']+=1
-            return struct.unpack('<B', buf[idx['x']-1:idx['x']])[0]
+            return struct.unpack('<B', buff[idx['x']-1:idx['x']])[0]
         def read_uint32():
             idx['x']+=4
-            return struct.unpack('<I', buf[idx['x']-4:idx['x']])[0]
+            return struct.unpack('<I', buff[idx['x']-4:idx['x']])[0]
         def read_float32():
             idx['x']+=4
-            return struct.unpack('<f', buf[idx['x']-4:idx['x']])[0]
+            return struct.unpack('<f', buff[idx['x']-4:idx['x']])[0]
 
         # Return empty model in case the byte-array contains no information
-        if len(buf) == 0:
+        if len(buff) == 0:
             return None
 
         # Read global stddev and mean (not used in RQRMI version 1.1)
-        _=read_float32()
-        _=read_float32()
+        self.input_domain_min=read_float32()
+        self.input_domain_max=read_float32()
 
         num_of_stages=read_uint32()
         _log(verbose, 'Num of stages: %d' % num_of_stages)
@@ -752,12 +751,10 @@ class RQRMI:
                 if version==0:
                     _log(verbose, '\nSkipping model <%d,%d>: model not compiled' % (s, m))
                     continue
-                elif version!=2:
+                elif version!=1:
                     _log(verbose, '\nUnsupported version for model <%d,%d>' % (s, m))
                     continue
-
                 _log(verbose, '\nLoading model <%d, %d>: ' % (s,m))
-
                 # Read model parameters
                 mu=read_float32()
                 sig=read_float32()
@@ -768,12 +765,10 @@ class RQRMI:
 
                 # Preallocate net values
                 net_values=[None for _ in range(2*num_of_layers-1)]
-
                 # Read network structure
                 structure=[None for _ in range(num_of_layers)]
                 for l in range(num_of_layers):
                     structure[l]=read_uint32()
-
                 # Layer 0 bias
                 net_values[0]=np.empty(structure[0])
 
@@ -806,7 +801,7 @@ class RQRMI:
 
         # Read the maximum error of each last stage submodel
         self.error_list = []
-        for e in range(len(self.trained_rqrmi[-1])):
+        for e in range(len(trained_rqrmi[-1])):
             self.error_list.append(read_uint32())
 
         _log(verbose, '\n')
